@@ -1,0 +1,12 @@
+body{
+  background-color:#efe7f6;
+  background-image:
+    linear-gradient(135deg,transparent 49.6%,rgba(104,80,166,.075) 49.9%,rgba(104,80,166,.075) 50.1%,transparent 50.4%),
+    linear-gradient(45deg,transparent 49.6%,rgba(210,133,112,.065) 49.9%,rgba(210,133,112,.065) 50.1%,transparent 50.4%),
+    linear-gradient(112deg,#e8d9f4 0%,#f7e6ef 34%,#dceee4 68%,#f3dcd1 100%);
+  background-size:34px 34px,34px 34px,100% 100%;
+  background-attachment:fixed;
+}
+@media(max-width:760px){
+  body{background-size:27px 27px,27px 27px,100% 100%;background-attachment:scroll}
+}

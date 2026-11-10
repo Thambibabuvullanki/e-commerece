@@ -1,0 +1,2 @@
+.brand small{font-size:6px;letter-spacing:.2px}
+@media(max-width:390px){.brand small{font-size:5px;letter-spacing:0}}

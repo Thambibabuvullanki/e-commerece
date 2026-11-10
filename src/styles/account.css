@@ -1,0 +1,17 @@
+.account-page{max-width:760px}
+.account-page h1{margin:11px 0 6px;font:700 32px/1.2 'Manrope',sans-serif;letter-spacing:-1px}
+.account-page>p{margin:0 0 26px;color:#827b89;font-size:11px}
+.account-details{min-height:72px;padding:13px 15px;border:1px solid #e9e6ed;display:flex;align-items:center;gap:12px}
+.account-avatar{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:#f0ecf7;color:#6850a6}
+.account-details>div{flex:1}
+.account-details strong,.account-details small{display:block}
+.account-details strong{font-size:11px}
+.account-details small{margin-top:4px;color:#89828f;font-size:9px}
+.account-details .logout-button{display:flex;align-items:center;gap:6px}
+.account-shortcuts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.account-shortcuts>a{min-height:85px;padding:15px;border:1px solid #e9e6ed;display:flex;align-items:center;gap:12px;color:#6850a6}
+.account-shortcuts>a>span{flex:1;color:#292333}
+.account-shortcuts b,.account-shortcuts small{display:block}
+.account-shortcuts b{font-size:11px}
+.account-shortcuts small{margin-top:5px;color:#89828f;font-size:9px}
+@media(max-width:760px){.account-page h1{font-size:27px}.account-shortcuts{grid-template-columns:1fr}}
