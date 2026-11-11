@@ -14,7 +14,7 @@ const storePath = join(serverDirectory, 'data', 'store.json')
 const sessions = new Map()
 let writeQueue = Promise.resolve()
 
-const emptyStore = () => ({ users: [], carts: {}, wishlists: {}, orders: [] })
+const emptyStore = () => ({ users: [], carts: {}, wishlists: {}, orders: [], restockAlerts: [] })
 
 async function readStore() {
   try {
@@ -117,6 +117,21 @@ app.get('/api/products', (request, response) => response.json({ products }))
 app.get('/api/categories', (request, response) => response.json({ categories }))
 app.get('/api/auth/me', (request, response) => response.json({ user: request.user || null }))
 
+app.post('/api/restock-alerts', async (request, response) => {
+  const product = products.find((entry) => entry.id === request.body?.productId)
+  const email = String(request.body?.email || '').trim().toLowerCase()
+  if (!product) return response.status(404).json({ error: 'That product could not be found.' })
+  if (product.inStock !== false) return response.status(400).json({ error: 'This product is currently in stock.' })
+  if (!/^\S+@\S+\.\S+$/.test(email)) return response.status(400).json({ error: 'Please enter a valid email address.' })
+  await updateStore((store) => {
+    store.restockAlerts ||= []
+    if (!store.restockAlerts.some((alert) => alert.productId === product.id && alert.email === email)) {
+      store.restockAlerts.push({ productId: product.id, email, createdAt: new Date().toISOString() })
+    }
+  })
+  response.status(201).json({ ok: true, notificationConfigured: false })
+})
+
 app.post('/api/auth/register', async (request, response) => {
   const name = String(request.body?.name || '').trim()
   const email = String(request.body?.email || '').trim().toLowerCase()
@@ -212,11 +227,48 @@ app.post('/api/orders', async (request, response) => {
   if (!/^\d{6}$/.test(String(pin))) return response.status(400).json({ error: 'Enter a 6-digit PIN code.' })
   if (!['cod', 'online'].includes(payment)) return response.status(400).json({ error: 'Choose a supported payment option.' })
 
+  let deliveryLocation = null
+  if (request.body?.location != null) {
+    const latitude = Number(request.body.location.latitude)
+    const longitude = Number(request.body.location.longitude)
+    const accuracy = Number(request.body.location.accuracy)
+    if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90 || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+      return response.status(400).json({ error: 'The GPS delivery location is invalid. Please try again or remove it.' })
+    }
+    deliveryLocation = {
+      latitude,
+      longitude,
+      accuracy: Number.isFinite(accuracy) && accuracy >= 0 ? accuracy : null,
+    }
+  }
+
+  const unavailableItem = Array.isArray(request.body?.items) && request.body.items.some((item) =>
+    products.some((product) => product.id === item?.id && product.inStock === false),
+  )
+  if (unavailableItem) return response.status(409).json({ error: 'Your bag includes an item that is currently out of stock. Remove it before placing the order.' })
+
   const items = normalizeItems(request.body?.items)
   if (!items.length) return response.status(400).json({ error: 'Your bag is empty.' })
   const orderItems = cartWithProducts(items)
   const subtotal = orderItems.reduce((total, item) => total + item.price * item.quantity, 0)
   const delivery = subtotal >= 2999 ? 0 : 99
+  const requestedBundleIds = request.body?.bundleProductIds
+  let bundleProductIds = []
+  let bundleDiscount = 0
+  if (requestedBundleIds !== undefined) {
+    if (!Array.isArray(requestedBundleIds) || requestedBundleIds.length !== 2 || new Set(requestedBundleIds).size !== 2) {
+      return response.status(400).json({ error: 'The bundle selection is invalid.' })
+    }
+    const bundleItems = requestedBundleIds.map((id) => orderItems.find((item) => item.id === id && item.quantity >= 1))
+    if (bundleItems.some((item) => !item)) return response.status(400).json({ error: 'Both bundle products must be in your bag.' })
+    bundleProductIds = requestedBundleIds
+    bundleDiscount = Math.round(bundleItems.reduce((total, item) => total + item.price, 0) * 0.1)
+  }
+  const createdAt = new Date()
+  const estimatedDelivery = {
+    from: new Date(createdAt.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+    to: new Date(createdAt.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+  }
   const order = {
     number: `SE${Date.now().toString().slice(-8)}${randomBytes(2).toString('hex').toUpperCase()}`,
     userId: request.user?.id || null,
@@ -226,12 +278,17 @@ app.post('/api/orders', async (request, response) => {
     pin: String(pin).trim(),
     address: String(address).trim(),
     city: String(city).trim(),
+    deliveryLocation,
     payment,
     items: orderItems,
     subtotal,
     delivery,
-    total: subtotal + delivery,
-    createdAt: new Date().toISOString(),
+    bundleProductIds,
+    bundleDiscount,
+    total: subtotal + delivery - bundleDiscount,
+    status: 'confirmed',
+    estimatedDelivery,
+    createdAt: createdAt.toISOString(),
   }
   await updateStore((store) => {
     store.orders.push(order)

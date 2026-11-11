@@ -6,6 +6,7 @@ import { ShopProvider } from './context/ShopContext.jsx'
 import './styles/global.css'
 import './styles/brand.css'
 import './styles/background.css'
+import './styles/extra-features.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

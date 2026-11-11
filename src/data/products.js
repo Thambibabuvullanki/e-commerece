@@ -400,6 +400,7 @@ const saleProductIds = new Set([
 
 export const products = [...featuredProducts, ...additionalProducts].map((product) => ({
   ...product,
+  inStock: product.id !== 'p16',
   onSale: saleProductIds.has(product.id),
 }))
 

@@ -1,11 +1,11 @@
-import { Heart, Menu, ShoppingBag, UserRound, X } from 'lucide-react'
+import { ArrowLeftRight, Heart, Menu, ShoppingBag, UserRound, X } from 'lucide-react'
 import { useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useShop } from '../context/ShopContext.jsx'
 import SearchBar from './SearchBar.jsx'
 
 export default function Navbar() {
-  const { cart, wishlist, user, logout } = useShop()
+  const { cart, wishlist, user, logout, compareIds } = useShop()
   const [query, setQuery] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
   const navigate = useNavigate()
@@ -28,6 +28,7 @@ export default function Navbar() {
           <div className="header-actions">
             <Link to={user ? '/account' : '/login'} className="header-action"><UserRound size={20} /><span>{user ? user.name.split(' ')[0] : 'Account'}</span></Link>
             <Link to="/wishlist" className="header-action counted"><Heart size={20} /><span>Saved</span>{wishlist.length > 0 && <b>{wishlist.length}</b>}</Link>
+            <Link to="/compare" className="header-action counted"><ArrowLeftRight size={20} /><span>Compare</span>{compareIds.length > 0 && <b>{compareIds.length}</b>}</Link>
             <Link to="/cart" className="header-action counted"><ShoppingBag size={20} /><span>Bag</span>{cart.length > 0 && <b>{cart.reduce((sum, item) => sum + item.quantity, 0)}</b>}</Link>
             {user && <button className="logout-button" onClick={logout}>Log out</button>}
           </div>
@@ -41,6 +42,7 @@ export default function Navbar() {
             <NavLink to="/shop?category=Shoes" onClick={() => setMenuOpen(false)}>Shoes</NavLink>
             <NavLink to="/shop?category=Home%20%26%20Kitchen" onClick={() => setMenuOpen(false)}>Home & kitchen</NavLink>
             <NavLink to="/shop?collection=new-arrivals" onClick={() => setMenuOpen(false)}>New arrivals</NavLink>
+            <NavLink to="/find-my-product" onClick={() => setMenuOpen(false)}>Find my product</NavLink>
             <NavLink to="/shop?sale=true" onClick={() => setMenuOpen(false)} className="sale-link">On sale</NavLink>
           </div>
         </nav>

@@ -1,0 +1,64 @@
+.compare-product{margin-top:9px;padding:5px 0;border:0;display:flex;align-items:center;gap:5px;background:transparent;color:#77727f;font-size:9px;cursor:pointer}
+.compare-product.is-selected,.compare-detail.is-selected{color:#6850a6}
+.compare-product:disabled,.compare-detail:disabled{opacity:.5;cursor:not-allowed}
+.compare-page{max-width:1080px}
+.feature-page-heading{margin:28px 0 23px}
+.feature-page-heading h1{margin:11px 0 7px;font:700 33px/1.2 'Manrope',sans-serif;letter-spacing:-1px}
+.feature-page-heading>p{max-width:620px;margin:0;color:#827b89;font-size:12px;line-height:1.7}
+.compare-table-wrap{overflow-x:auto;border:1px solid #e9e6ed;background:#fff}
+.compare-table{width:100%;min-width:620px;border-collapse:collapse;text-align:left}
+.compare-table th,.compare-table td{padding:14px;border-bottom:1px solid #efedf1;vertical-align:top}
+.compare-table thead th{position:relative;width:25%;text-align:center}
+.compare-table thead th:first-child,.compare-table tbody th{width:115px;color:#77727f;font-size:10px;font-weight:600}
+.compare-table thead th>a{display:flex;flex-direction:column;align-items:center;gap:9px;font-size:11px;line-height:1.4}
+.compare-table thead th img{width:100%;max-width:170px;height:130px;object-fit:cover}
+.compare-remove{position:absolute;top:7px;right:7px;width:27px;height:27px;border:1px solid #e9e6ed;border-radius:50%;display:grid;place-items:center;background:white;color:#77727f;cursor:pointer}
+.compare-add{min-height:34px;margin-top:12px;padding:0 10px;font-size:9px}
+.compare-table td{min-width:135px;color:#494452;font-size:10px;line-height:1.6}
+.finder-page{max-width:960px}
+.finder-page .feature-page-heading .eyebrow{display:flex}
+.finder-form{padding:20px;display:grid;grid-template-columns:1fr 1fr auto;align-items:end;gap:15px;border:1px solid #e9e6ed;background:#fbfafc}
+.finder-form label{display:grid;gap:7px;color:#5d5666;font-size:10px;font-weight:600}
+.finder-form select{height:42px;padding:0 10px;border:1px solid #e9e6ed;border-radius:3px;background:white;color:#292333;font-size:11px}
+.finder-form .button{min-height:42px}
+.finder-results{margin-top:38px}
+.finder-results .section-heading>span{color:#827b89;font-size:10px}
+.finder-results>p{color:#827b89;font-size:11px}
+.finder-promo{margin:0 auto 15px;padding:24px 28px;border:1px solid #e9e6ed;background:#fbfafc;display:flex;justify-content:space-between;align-items:center}
+.finder-promo>div{max-width:620px}
+.finder-promo h2{margin:9px 0;font:700 23px 'Manrope',sans-serif}
+.finder-promo p{margin:0 0 14px;color:#827b89;font-size:11px;line-height:1.6}
+.finder-promo>svg{margin-right:30px;color:#b3a5cf}
+.restock-form{margin:16px 0;padding:15px;border:1px solid #e9e6ed;background:#fbfafc}
+.restock-form>strong{display:flex;align-items:center;gap:7px;font-size:11px}
+.restock-form>strong svg{color:#6850a6}
+.restock-form>p{margin:6px 0 11px;color:#827b89;font-size:10px;line-height:1.5}
+.restock-form>div{display:flex;gap:8px}
+.restock-form input{min-width:0;flex:1;padding:0 10px;border:1px solid #e9e6ed;border-radius:3px;font-size:10px}
+.restock-form .button{min-height:38px;padding:0 12px}
+.restock-form>small{margin-top:8px;display:block;font-size:9px;line-height:1.5}
+.restock-success{color:#57765f}
+.restock-error{color:#a44949}
+.detail-secondary-actions{display:flex;align-items:center;gap:9px;margin-top:11px}
+.compare-detail{min-height:38px;padding:0 12px;border:1px solid #e9e6ed;background:white;font-size:9px}
+.bundle-offer{max-width:760px;margin:42px auto 0;padding:23px;border:1px solid #e3dcec;background:#faf8fc}
+.bundle-offer h2{margin:9px 0 14px;font:700 21px 'Manrope',sans-serif}
+.bundle-products{display:flex;align-items:center;gap:11px;flex-wrap:wrap;font-size:10px}
+.bundle-products span{padding:7px 9px;border:1px solid #e9e6ed;background:white}
+.bundle-products>b{color:#6850a6}
+.bundle-offer p{margin:13px 0;color:#827b89;font-size:10px}
+.bundle-offer p strong{color:#292333}
+.bundle-offer .button{min-height:39px}
+.bundle-discount-line{color:#57765f}
+.eta-range{display:block;margin:10px 0;color:#554477;font:700 20px 'Manrope',sans-serif}
+.order-progress{margin:17px 0 8px;padding:0;list-style:none}
+.order-progress li{position:relative;min-height:48px;display:flex;align-items:flex-start;gap:10px;color:#aaa4b0}
+.order-progress li:not(:last-child)::after{position:absolute;top:27px;left:11px;width:1px;height:25px;background:#e9e6ed;content:''}
+.order-progress li>span{z-index:1;width:23px;height:23px;border:1px solid #e3dfe8;border-radius:50%;display:grid;place-items:center;background:white;font-size:9px}
+.order-progress li.is-current{color:#57765f}
+.order-progress li.is-current>span{border-color:#d4e4d7;background:#edf3ee}
+.order-progress li strong,.order-progress li small{display:block}
+.order-progress li strong{padding-top:2px;color:#292333;font-size:10px}
+.order-progress li small{margin-top:3px;color:#938d99;font-size:8px}
+.tracking-status-card>.eyebrow{margin-top:2px}
+@media(max-width:760px){.feature-page-heading h1{font-size:28px}.finder-form{grid-template-columns:1fr;gap:12px}.finder-form .button{width:100%}.finder-promo{padding:19px;gap:12px}.finder-promo h2{font-size:19px}.finder-promo>svg{width:28px;flex:none;margin:0}.bundle-offer{margin-top:29px;padding:17px}.bundle-offer h2{font-size:18px}.compare-table th,.compare-table td{padding:10px}}
