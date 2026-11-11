@@ -8,7 +8,7 @@ export default function Auth({ mode = 'login' }) {
   const isRegister = mode === 'register'
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const { setUser } = useShop()
+  const { setUser, brand } = useShop()
   const navigate = useNavigate()
   const location = useLocation()
   const onSubmit = async (event) => {
@@ -27,12 +27,12 @@ export default function Auth({ mode = 'login' }) {
         body: { name, email, password },
       })
       setUser(user)
-      navigate(location.state?.from || '/', { replace: true })
+      navigate(location.state?.from || (user.role === 'admin' ? '/admin' : '/'), { replace: true })
     } catch (requestError) {
       setError(requestError.message)
     } finally {
       setSubmitting(false)
     }
   }
-  return <main className="auth-page"><div className="auth-image"><img src="https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1300&q=85" alt="Friends enjoying a day of shopping" /><div><span>THE GOOD THINGS</span><strong>are closer<br />than you think.</strong></div></div><div className="auth-panel"><div className="auth-form-wrap"><span className="eyebrow">{isRegister ? 'COME ON IN' : 'GOOD TO SEE YOU'}</span><h1>{isRegister ? 'Make yourself at home.' : 'Welcome back.'}</h1><p>{isRegister ? 'A little account makes finding your favorites easier.' : 'Your good finds are right where you left them.'}</p><form onSubmit={onSubmit} className="form-stack">{isRegister && <label>Your name<span className="input-wrap"><UserRound size={17} /><input type="text" name="name" placeholder="How should we call you?" autoComplete="name" required minLength="2" /></span></label>}<label>Email address<span className="input-wrap"><UserRound size={17} /><input type="email" name="email" placeholder="you@example.com" autoComplete="email" required /></span></label><label>Password<span className="input-wrap"><LockKeyhole size={17} /><input type="password" name="password" placeholder="At least 6 characters" autoComplete={isRegister ? 'new-password' : 'current-password'} required minLength="6" /></span></label>{error && <span className="form-error" role="alert">{error}</span>}<button className="button button-primary auth-submit" type="submit" disabled={submitting}>{submitting ? 'One moment…' : isRegister ? 'Create your account' : 'Sign in'} <ArrowRight size={17} /></button></form><div className="demo-note"><LockKeyhole size={15} /><span>Your account is stored on the local ZORVIQUE server for this demo.</span></div><p className="auth-switch">{isRegister ? 'Already have a little account?' : 'New around here?'} <Link to={isRegister ? '/login' : '/register'}>{isRegister ? 'Sign in' : 'Create an account'}</Link></p></div></div></main>
+  return <main className="auth-page"><div className="auth-image"><img src="https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1300&q=85" alt="Friends enjoying a day of shopping" /><div><span>THE GOOD THINGS</span><strong>are closer<br />than you think.</strong></div></div><div className="auth-panel"><div className="auth-form-wrap"><span className="eyebrow">{isRegister ? 'COME ON IN' : 'GOOD TO SEE YOU'}</span><h1>{isRegister ? 'Make yourself at home.' : 'Welcome back.'}</h1><p>{isRegister ? 'A little account makes finding your favorites easier.' : 'Your good finds are right where you left them.'}</p><form onSubmit={onSubmit} className="form-stack">{isRegister && <label>Your name<span className="input-wrap"><UserRound size={17} /><input type="text" name="name" placeholder="How should we call you?" autoComplete="name" required minLength="2" /></span></label>}<label>Email address<span className="input-wrap"><UserRound size={17} /><input type="email" name="email" placeholder="you@example.com" autoComplete="email" required /></span></label><label>Password<span className="input-wrap"><LockKeyhole size={17} /><input type="password" name="password" placeholder="At least 6 characters" autoComplete={isRegister ? 'new-password' : 'current-password'} required minLength="6" /></span></label>{error && <span className="form-error" role="alert">{error}</span>}<button className="button button-primary auth-submit" type="submit" disabled={submitting}>{submitting ? 'One moment…' : isRegister ? 'Create your account' : 'Sign in'} <ArrowRight size={17} /></button></form><div className="demo-note"><LockKeyhole size={15} /><span>Your account is stored on the local {brand.name} server for this demo.</span></div><p className="auth-switch">{isRegister ? 'Already have a little account?' : 'New around here?'} <Link to={isRegister ? '/login' : '/register'}>{isRegister ? 'Sign in' : 'Create an account'}</Link></p></div></div></main>
 }

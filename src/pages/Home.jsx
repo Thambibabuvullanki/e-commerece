@@ -11,8 +11,8 @@ function SectionHeading({ eyebrow, title, action = '/shop', label = 'See everyth
 }
 
 export default function Home() {
-  const { categories, products } = useShop()
-  const collectionPreview = products.filter((product) => product.brand === 'ZORVIQUE').slice(0, 4)
+  const { categories, products, brand } = useShop()
+  const collectionPreview = products.filter((product) => product.brand === brand.name || product.tag === 'New').slice(0, 4)
   return <main><Hero /><section className="perks container"><div><PackageCheck /><span><b>Easy, free delivery</b><small>On orders over ₹2,999</small></span></div><div><ShieldCheck /><span><b>Shopping, made secure</b><small>Checkout with confidence</small></span></div><div><Sparkles /><span><b>Thoughtful quality</b><small>Good things, picked with care</small></span></div><div><BadgePercent /><span><b>Lovely little offers</b><small>Something for every budget</small></span></div></section>
     <section className="section-block container categories-section"><SectionHeading eyebrow="A GOOD PLACE TO START" title="Find your kind of good." /><div className="category-grid">{categories.map((category) => <CategoryCard key={category.name} category={category} />)}</div></section>
     <section className="section-block container finder-promo"><div><span className="eyebrow">NOT SURE WHERE TO START?</span><h2>Let’s find your next favorite.</h2><p>Tell us what you’re looking for and your budget. We’ll find a few good matches.</p><Link className="button button-primary" to="/find-my-product">Try the product finder <ArrowRight size={16} /></Link></div><Sparkles size={42} /></section>

@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import express from 'express'
-import { categories, products } from '../src/data/products.js'
+import { categories, products as seedProducts } from '../src/data/products.js'
 
 const scrypt = promisify(scryptCallback)
 const app = express()
@@ -13,8 +13,10 @@ const serverDirectory = dirname(fileURLToPath(import.meta.url))
 const storePath = join(serverDirectory, 'data', 'store.json')
 const sessions = new Map()
 let writeQueue = Promise.resolve()
+let catalogProducts = [...seedProducts]
+let storefrontBrand = { name: 'ZORVIQUE', tagline: 'Everything You Love, All in One Place.', logoUrl: '' }
 
-const emptyStore = () => ({ users: [], carts: {}, wishlists: {}, orders: [], restockAlerts: [] })
+const emptyStore = () => ({ users: [], carts: {}, wishlists: {}, orders: [], restockAlerts: [], products: [...seedProducts], brand: storefrontBrand })
 
 async function readStore() {
   try {
@@ -39,7 +41,7 @@ function updateStore(update) {
 }
 
 function publicUser(user) {
-  return { id: user.id, name: user.name, email: user.email }
+  return { id: user.id, name: user.name, email: user.email, role: user.role || 'customer' }
 }
 
 function parseCookies(header = '') {
@@ -63,7 +65,7 @@ function normalizeItems(items, maximumQuantity = 99) {
   if (!Array.isArray(items)) return []
   const normalized = new Map()
   for (const item of items) {
-    const product = products.find((entry) => entry.id === item?.id)
+    const product = catalogProducts.find((entry) => entry.id === item?.id)
     const quantity = Math.min(maximumQuantity, Math.max(1, Math.floor(Number(item?.quantity) || 1)))
     if (product) normalized.set(product.id, Math.min(maximumQuantity, (normalized.get(product.id) || 0) + quantity))
   }
@@ -72,13 +74,13 @@ function normalizeItems(items, maximumQuantity = 99) {
 
 function cartWithProducts(items = []) {
   return items.flatMap(({ id, quantity }) => {
-    const product = products.find((entry) => entry.id === id)
+    const product = catalogProducts.find((entry) => entry.id === id)
     return product ? [{ ...product, quantity }] : []
   })
 }
 
 function wishlistWithProducts(ids = []) {
-  return ids.map((id) => products.find((product) => product.id === id)).filter(Boolean)
+  return ids.map((id) => catalogProducts.find((product) => product.id === id)).filter(Boolean)
 }
 
 function accountState(store, userId) {
@@ -91,6 +93,49 @@ function accountState(store, userId) {
 function requireUser(request, response, next) {
   if (!request.user) return response.status(401).json({ error: 'Please sign in to continue.' })
   next()
+}
+
+function requireAdmin(request, response, next) {
+  if (!request.user) return response.status(401).json({ error: 'Please sign in to continue.' })
+  if (request.user.role !== 'admin') return response.status(403).json({ error: 'Administrator access is required.' })
+  next()
+}
+
+function validateProduct(input, id) {
+  const name = String(input?.name || '').trim()
+  const category = String(input?.category || '').trim()
+  const image = String(input?.image || '').trim()
+  const description = String(input?.description || '').trim()
+  const price = Number(input?.price)
+  const originalPrice = Number(input?.originalPrice)
+  const rating = Number(input?.rating ?? 0)
+  const reviews = Number(input?.reviews ?? 0)
+  if (!name || name.length > 120) throw new Error('Product name is required and must be under 120 characters.')
+  if (!category || category.length > 60) throw new Error('Product category is required and must be under 60 characters.')
+  if (!image || image.length > 1000) throw new Error('A product image URL is required.')
+  try {
+    if (!['http:', 'https:'].includes(new URL(image).protocol)) throw new Error()
+  } catch {
+    throw new Error('Product image must be an http or https URL.')
+  }
+  if (!description || description.length > 2000) throw new Error('Product description is required and must be under 2,000 characters.')
+  if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(originalPrice) || originalPrice < price) throw new Error('Enter valid prices; the original price must be at least the selling price.')
+  if (!Number.isFinite(rating) || rating < 0 || rating > 5 || !Number.isInteger(reviews) || reviews < 0) throw new Error('Rating must be between 0 and 5, and reviews must be a non-negative whole number.')
+  return {
+    id,
+    name,
+    category,
+    image,
+    description,
+    price: Math.round(price),
+    originalPrice: Math.round(originalPrice),
+    rating,
+    reviews,
+    tag: String(input?.tag || '').trim().slice(0, 40),
+    brand: String(input?.brand || '').trim().slice(0, 60),
+    onSale: Boolean(input?.onSale),
+    inStock: input?.inStock !== false,
+  }
 }
 
 app.use(express.json({ limit: '100kb' }))
@@ -113,12 +158,133 @@ app.use(async (request, response, next) => {
 })
 
 app.get('/api/health', (request, response) => response.json({ status: 'ok' }))
-app.get('/api/products', (request, response) => response.json({ products }))
-app.get('/api/categories', (request, response) => response.json({ categories }))
+app.get('/api/products', (request, response) => response.json({ products: catalogProducts }))
+app.get('/api/categories', (request, response) => {
+  const knownCategories = new Set(categories.map((category) => category.name))
+  const addedCategories = [...new Set(catalogProducts.map((product) => product.category))]
+    .filter((name) => !knownCategories.has(name))
+    .map((name) => ({
+      name,
+      image: catalogProducts.find((product) => product.category === name)?.image || '',
+      count: 'More to love',
+    }))
+  response.json({ categories: [...categories, ...addedCategories] })
+})
+app.get('/api/storefront', (request, response) => response.json({ brand: storefrontBrand }))
 app.get('/api/auth/me', (request, response) => response.json({ user: request.user || null }))
+app.get('/api/admin/setup-status', async (request, response) => {
+  const store = await readStore()
+  response.json({ setupRequired: !store.users.some((user) => user.role === 'admin') })
+})
+
+app.post('/api/admin/setup', async (request, response) => {
+  if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(request.socket.remoteAddress)) {
+    return response.status(403).json({ error: 'Initial administrator setup is only available on this computer.' })
+  }
+  const name = String(request.body?.name || '').trim()
+  const email = String(request.body?.email || '').trim().toLowerCase()
+  const password = String(request.body?.password || '')
+  if (name.length < 2 || name.length > 80) return response.status(400).json({ error: 'Enter a name between 2 and 80 characters.' })
+  if (!/^\S+@\S+\.\S+$/.test(email)) return response.status(400).json({ error: 'Please enter a valid email address.' })
+  if (password.length < 10) return response.status(400).json({ error: 'Choose a unique password with at least 10 characters.' })
+  const salt = randomBytes(16).toString('hex')
+  const passwordHash = Buffer.from(await scrypt(password, salt, 64)).toString('hex')
+  const user = { id: randomUUID(), name, email, salt, passwordHash, role: 'admin' }
+  let adminUser = user
+  try {
+    await updateStore((store) => {
+      if (store.users.some((entry) => entry.role === 'admin')) {
+        const error = new Error('An administrator has already been set up.')
+        error.status = 409
+        throw error
+      }
+      const existingUser = store.users.find((entry) => entry.email === email)
+      if (existingUser) {
+        Object.assign(existingUser, { ...user, id: existingUser.id })
+        adminUser = existingUser
+      }
+      else store.users.push(user)
+    })
+    const sessionId = randomBytes(32).toString('base64url')
+    sessions.set(sessionId, { userId: adminUser.id, expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000 })
+    setSessionCookie(response, sessionId)
+    response.status(201).json({ user: publicUser(adminUser) })
+  } catch (error) {
+    if (error.status) return response.status(error.status).json({ error: error.message })
+    throw error
+  }
+})
+
+app.get('/api/admin/products', requireAdmin, (request, response) => response.json({ products: catalogProducts }))
+app.post('/api/admin/products', requireAdmin, async (request, response) => {
+  let product
+  try {
+    product = validateProduct(request.body, randomUUID())
+  } catch (error) {
+    return response.status(400).json({ error: error.message })
+  }
+  await updateStore((store) => {
+    store.products ||= [...seedProducts]
+    store.products.push(product)
+    catalogProducts = store.products
+  })
+  response.status(201).json({ product })
+})
+
+app.put('/api/admin/products/:id', requireAdmin, async (request, response) => {
+  const existing = catalogProducts.find((product) => product.id === request.params.id)
+  if (!existing) return response.status(404).json({ error: 'That product could not be found.' })
+  let product
+  try {
+    product = validateProduct({ ...existing, ...request.body }, existing.id)
+  } catch (error) {
+    return response.status(400).json({ error: error.message })
+  }
+  await updateStore((store) => {
+    store.products ||= [...seedProducts]
+    store.products = store.products.map((item) => item.id === product.id ? product : item)
+    catalogProducts = store.products
+  })
+  response.json({ product })
+})
+
+app.delete('/api/admin/products/:id', requireAdmin, async (request, response) => {
+  if (!catalogProducts.some((product) => product.id === request.params.id)) {
+    return response.status(404).json({ error: 'That product could not be found.' })
+  }
+  await updateStore((store) => {
+    store.products ||= [...seedProducts]
+    store.products = store.products.filter((product) => product.id !== request.params.id)
+    for (const [userId, items] of Object.entries(store.carts)) {
+      store.carts[userId] = items.filter((item) => item.id !== request.params.id)
+    }
+    for (const [userId, ids] of Object.entries(store.wishlists)) {
+      store.wishlists[userId] = ids.filter((id) => id !== request.params.id)
+    }
+    catalogProducts = store.products
+  })
+  response.json({ ok: true })
+})
+
+app.put('/api/admin/brand', requireAdmin, async (request, response) => {
+  const name = String(request.body?.name || '').trim()
+  const tagline = String(request.body?.tagline || '').trim()
+  const logoUrl = String(request.body?.logoUrl || '').trim()
+  if (!name || name.length > 60) return response.status(400).json({ error: 'Store name is required and must be under 60 characters.' })
+  if (tagline.length > 120) return response.status(400).json({ error: 'Tagline must be under 120 characters.' })
+  if (logoUrl.length > 1000 || (logoUrl && !/^https?:\/\/\S+$/i.test(logoUrl))) {
+    return response.status(400).json({ error: 'Logo must be an image URL starting with http:// or https://.' })
+  }
+  const brand = { name, tagline, logoUrl }
+  await updateStore((store) => {
+    store.brand = brand
+    storefrontBrand = brand
+  })
+  response.json({ brand })
+})
 
 app.post('/api/restock-alerts', async (request, response) => {
-  const product = products.find((entry) => entry.id === request.body?.productId)
+  const product = catalogProducts.find((entry) => entry.id === request.body?.productId)
   const email = String(request.body?.email || '').trim().toLowerCase()
   if (!product) return response.status(404).json({ error: 'That product could not be found.' })
   if (product.inStock !== false) return response.status(400).json({ error: 'This product is currently in stock.' })
@@ -142,7 +308,7 @@ app.post('/api/auth/register', async (request, response) => {
 
   const salt = randomBytes(16).toString('hex')
   const passwordHash = Buffer.from(await scrypt(password, salt, 64)).toString('hex')
-  const user = { id: randomUUID(), name, email, salt, passwordHash }
+  const user = { id: randomUUID(), name, email, salt, passwordHash, role: 'customer' }
   try {
     await updateStore((store) => {
       if (store.users.some((entry) => entry.email === email)) {
@@ -190,7 +356,7 @@ app.post('/api/auth/logout', (request, response) => {
 
 app.post('/api/account/sync', requireUser, async (request, response) => {
   const guestCart = normalizeItems(request.body?.cart)
-  const guestWishlist = (request.body?.wishlist || []).map((product) => product?.id).filter((id) => products.some((product) => product.id === id))
+  const guestWishlist = (request.body?.wishlist || []).map((product) => product?.id).filter((id) => catalogProducts.some((product) => product.id === id))
   const state = await updateStore((store) => {
     const existingCart = new Map((store.carts[request.user.id] || []).map((item) => [item.id, item.quantity]))
     for (const item of guestCart) existingCart.set(item.id, Math.min(99, (existingCart.get(item.id) || 0) + item.quantity))
@@ -208,7 +374,7 @@ app.get('/api/account/state', requireUser, async (request, response) => {
 
 app.put('/api/account/state', requireUser, async (request, response) => {
   const cart = normalizeItems(request.body?.cart)
-  const wishlist = [...new Set((request.body?.wishlist || []).map((product) => product?.id).filter((id) => products.some((product) => product.id === id)))]
+  const wishlist = [...new Set((request.body?.wishlist || []).map((product) => product?.id).filter((id) => catalogProducts.some((product) => product.id === id)))]
   const state = await updateStore((store) => {
     store.carts[request.user.id] = cart
     store.wishlists[request.user.id] = wishlist
@@ -243,7 +409,7 @@ app.post('/api/orders', async (request, response) => {
   }
 
   const unavailableItem = Array.isArray(request.body?.items) && request.body.items.some((item) =>
-    products.some((product) => product.id === item?.id && product.inStock === false),
+    catalogProducts.some((product) => product.id === item?.id && product.inStock === false),
   )
   if (unavailableItem) return response.status(409).json({ error: 'Your bag includes an item that is currently out of stock. Remove it before placing the order.' })
 
@@ -310,6 +476,10 @@ try {
   if (error.code !== 'ENOENT') throw error
   await writeFile(storePath, JSON.stringify(emptyStore(), null, 2))
 }
+
+const savedStore = await readStore()
+catalogProducts = Array.isArray(savedStore.products) ? savedStore.products : [...seedProducts]
+storefrontBrand = { ...storefrontBrand, ...(savedStore.brand || {}) }
 
 app.listen(port, '127.0.0.1', () => {
   console.log(`ZORVIQUE API listening on http://127.0.0.1:${port}`)

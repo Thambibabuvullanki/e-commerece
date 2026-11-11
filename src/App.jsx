@@ -1,5 +1,8 @@
 import { Route, Routes, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
+import { useShop } from './context/ShopContext.jsx'
+import Admin from './pages/Admin.jsx'
+import AdminSetup from './pages/AdminSetup.jsx'
 import Footer from './components/Footer.jsx'
 import Navbar from './components/Navbar.jsx'
 import Auth from './pages/Auth.jsx'
@@ -24,5 +27,9 @@ function ScrollToTop() {
 }
 
 export default function App() {
-  return <><ScrollToTop /><Navbar /><Routes><Route path="/" element={<Home />} /><Route path="/shop" element={<Shop />} /><Route path="/product/:id" element={<ProductDetails />} /><Route path="/cart" element={<Cart />} /><Route path="/wishlist" element={<Wishlist />} /><Route path="/compare" element={<Compare />} /><Route path="/find-my-product" element={<ProductFinder />} /><Route path="/login" element={<Auth />} /><Route path="/register" element={<Auth mode="register" />} /><Route path="/account" element={<Account />} /><Route path="/checkout" element={<Checkout />} /><Route path="/order-success" element={<OrderSuccess />} /><Route path="/track-order" element={<OrderTracking />} /><Route path="*" element={<Home />} /></Routes><Footer /></>
+  const { brand } = useShop()
+  useEffect(() => {
+    document.title = `${brand.name} | ${brand.tagline}`
+  }, [brand])
+  return <><ScrollToTop /><Navbar /><Routes><Route path="/" element={<Home />} /><Route path="/shop" element={<Shop />} /><Route path="/product/:id" element={<ProductDetails />} /><Route path="/cart" element={<Cart />} /><Route path="/wishlist" element={<Wishlist />} /><Route path="/compare" element={<Compare />} /><Route path="/find-my-product" element={<ProductFinder />} /><Route path="/login" element={<Auth />} /><Route path="/register" element={<Auth mode="register" />} /><Route path="/account" element={<Account />} /><Route path="/admin" element={<Admin />} /><Route path="/admin/setup" element={<AdminSetup />} /><Route path="/checkout" element={<Checkout />} /><Route path="/order-success" element={<OrderSuccess />} /><Route path="/track-order" element={<OrderTracking />} /><Route path="*" element={<Home />} /></Routes><Footer /></>
 }

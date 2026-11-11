@@ -22,6 +22,7 @@ export function ShopProvider({ children }) {
   const [user, setUser] = useState(null)
   const [products, setProducts] = useState(fallbackProducts)
   const [categories, setCategories] = useState(fallbackCategories)
+  const [brand, setBrand] = useState({ name: 'ZORVIQUE', tagline: 'Everything You Love, All in One Place.', logoUrl: '' })
   const [accountReady, setAccountReady] = useState(false)
 
   useEffect(() => {
@@ -37,6 +38,9 @@ export function ShopProvider({ children }) {
     }).catch(() => {})
     apiRequest('/categories').then(({ categories: apiCategories }) => {
       if (active && Array.isArray(apiCategories)) setCategories(apiCategories)
+    }).catch(() => {})
+    apiRequest('/storefront').then(({ brand: apiBrand }) => {
+      if (active && apiBrand) setBrand(apiBrand)
     }).catch(() => {})
     apiRequest('/auth/me').then(({ user: apiUser }) => {
       if (active && apiUser) setUser(apiUser)
@@ -133,6 +137,16 @@ export function ShopProvider({ children }) {
     }, current))
     setBundleProductIds(items.map(({ id }) => id))
   }
+  const refreshStorefront = async () => {
+    const [{ products: nextProducts }, { categories: nextCategories }, { brand: nextBrand }] = await Promise.all([
+      apiRequest('/products'),
+      apiRequest('/categories'),
+      apiRequest('/storefront'),
+    ])
+    setProducts(nextProducts)
+    setCategories(nextCategories)
+    setBrand(nextBrand)
+  }
   const logout = async () => {
     try { await apiRequest('/auth/logout', { method: 'POST' }) } catch {}
     setAccountReady(false)
@@ -143,7 +157,7 @@ export function ShopProvider({ children }) {
   }
 
   return (
-    <ShopContext.Provider value={{ cart, wishlist, user, setUser, logout, products, categories, addToCart, removeFromCart, updateQuantity, toggleWishlist, moveToCart, setCart, compareIds, toggleCompare, viewedIds, recordProductView, bundleProductIds, addBundleToCart }}>
+    <ShopContext.Provider value={{ cart, wishlist, user, setUser, logout, products, categories, brand, refreshStorefront, addToCart, removeFromCart, updateQuantity, toggleWishlist, moveToCart, setCart, compareIds, toggleCompare, viewedIds, recordProductView, bundleProductIds, addBundleToCart }}>
       {children}
     </ShopContext.Provider>
   )
