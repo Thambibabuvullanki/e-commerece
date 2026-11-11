@@ -1,4 +1,4 @@
-import { ArrowRight, ImagePlus, PackagePlus, Pencil, Save, ShieldCheck, Trash2 } from 'lucide-react'
+import { ArrowRight, CreditCard, ImagePlus, MapPin, PackagePlus, Pencil, Save, ShieldCheck, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { apiRequest } from '../api.js'
@@ -49,12 +49,20 @@ export default function Admin() {
   const [form, setForm] = useState(blankProduct)
   const [editingId, setEditingId] = useState(null)
   const [brandForm, setBrandForm] = useState(brand)
+  const [orders, setOrders] = useState([])
+  const [updatingOrder, setUpdatingOrder] = useState(null)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
   useEffect(() => { setItems(products) }, [products])
   useEffect(() => { setBrandForm(brand) }, [brand])
+  useEffect(() => {
+    if (!user || user.role !== 'admin') return
+    apiRequest('/admin/orders')
+      .then(({ orders: latest }) => setOrders(latest))
+      .catch((requestError) => setError(requestError.message))
+  }, [user])
 
   if (!user || user.role !== 'admin') return <Navigate to="/admin/login" replace state={{ from: '/admin' }} />
 
@@ -131,11 +139,54 @@ export default function Admin() {
       setBusy(false)
     }
   }
+  const updatePaymentStatus = async (order, paymentStatus) => {
+    clearNotice()
+    setUpdatingOrder(order.number)
+    try {
+      const { order: updatedOrder } = await apiRequest(`/admin/orders/${encodeURIComponent(order.number)}/payment-status`, {
+        method: 'PATCH',
+        body: { paymentStatus },
+      })
+      setOrders((current) => current.map((item) => item.number === updatedOrder.number ? updatedOrder : item))
+      setMessage(`Payment status for order ${order.number} updated.`)
+    } catch (requestError) {
+      setError(requestError.message)
+    } finally {
+      setUpdatingOrder(null)
+    }
+  }
+  const updateOrderStatus = async (order, status) => {
+    clearNotice()
+    setUpdatingOrder(order.number)
+    try {
+      const { order: updatedOrder } = await apiRequest(`/admin/orders/${encodeURIComponent(order.number)}/status`, {
+        method: 'PATCH',
+        body: { status },
+      })
+      setOrders((current) => current.map((item) => item.number === updatedOrder.number ? { ...updatedOrder, paymentStatus: item.paymentStatus } : item))
+      setMessage(`Order ${order.number} updated to ${status}.`)
+    } catch (requestError) {
+      setError(requestError.message)
+    } finally {
+      setUpdatingOrder(null)
+    }
+  }
 
   return <main className="page-shell admin-page"><div className="container">
     <header className="admin-heading"><div><span className="eyebrow"><ShieldCheck size={14} /> STORE ADMINISTRATION</span><h1>Your store, your way.</h1><p>Manage the products and branding customers see across your storefront.</p></div><Link className="button admin-store-link" to="/">View storefront <ArrowRight size={15} /></Link></header>
     {message && <div className="admin-notice admin-notice-success" role="status">{message}</div>}
     {error && <div className="admin-notice admin-notice-error" role="alert">{error}</div>}
+    <div className="admin-catalog-heading" id="admin-orders"><div><span className="eyebrow">CUSTOMER PURCHASES</span><h2>Orders <span>{orders.length}</span></h2></div></div>
+    <section className="admin-order-list" aria-label="Manage customer orders">
+      {orders.map((order) => <article className="admin-order-row" key={order.number}>
+        <div className="admin-order-heading"><div><strong>Order {order.number}</strong><small>{order.name} · {order.email} · {new Date(order.createdAt).toLocaleDateString('en-IN')}</small></div><strong>{formatPrice(order.total)}</strong></div>
+        <ul className="admin-order-items">{order.items.map((item) => <li key={item.id}><span>{item.name} × {item.quantity}</span><strong>{formatPrice(item.price * item.quantity)}</strong></li>)}</ul>
+        <div className="admin-order-payment"><span>Order status</span><label>Fulfillment<select value={order.status || 'pending'} disabled={updatingOrder === order.number} onChange={(event) => updateOrderStatus(order, event.target.value)}><option value="pending">Awaiting confirmation</option><option value="confirmed">Confirmed</option><option value="packed">Packed</option><option value="shipped">On the way</option><option value="delivered">Delivered</option><option value="cancelled">Cancelled</option></select></label></div>
+        <div className="admin-order-payment"><span><CreditCard size={14} /> {order.payment === 'cod' ? 'Cash on Delivery' : 'Demo Online Payment'}</span><label>Payment status<select value={order.paymentStatus || 'pending'} disabled={updatingOrder === order.number} onChange={(event) => updatePaymentStatus(order, event.target.value)}><option value="pending">Pending</option><option value="paid">Paid</option><option value="failed">Failed</option></select></label></div>
+        <div className="admin-order-delivery"><span><MapPin size={14} /> {order.address}, {order.city} {order.pin}{order.deliveryLocation ? ' · GPS saved' : ''}</span><Link to="/track-order" state={{ order, from: '/admin' }}>View delivery location</Link></div>
+      </article>)}
+      {!orders.length && <div className="empty-state"><h2>No orders yet.</h2><p>Customer orders will appear here with their selected items and payment status.</p></div>}
+    </section>
     <section className="admin-brand-panel" id="admin-brand">
       <div className="admin-panel-heading"><span className="admin-panel-icon"><ImagePlus size={19} /></span><div><h2>Store identity</h2><p>Update your store name, tagline, and logo image URL.</p></div></div>
       <form className="admin-brand-form" onSubmit={saveBrand}>

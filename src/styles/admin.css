@@ -176,6 +176,54 @@
   overflow:hidden;
   background:rgba(255,255,255,.95);
 }
+.admin-order-list{
+  margin-bottom:35px;
+  border:1px solid #e9e6ed;
+  border-radius:7px;
+  overflow:hidden;
+  background:rgba(255,255,255,.95);
+}
+.admin-order-row{padding:14px;border-bottom:1px solid #efedf1}
+.admin-order-row:last-child{border-bottom:0}
+.admin-order-heading,.admin-order-payment,.admin-order-payment>span,.admin-order-payment label{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.admin-order-heading>div{min-width:0}
+.admin-order-heading strong,.admin-order-heading small{display:block}
+.admin-order-heading strong{font-size:11px}
+.admin-order-heading small{margin-top:4px;color:#827b89;font-size:9px}
+.admin-order-items{margin:11px 0;padding:9px 0;border-top:1px solid #efedf1;border-bottom:1px solid #efedf1;list-style:none}
+.admin-order-items li{display:flex;justify-content:space-between;gap:12px;padding:3px 0;color:#5d5666;font-size:10px}
+.admin-order-items li strong{color:#292333;font-size:10px}
+.admin-order-payment{flex-wrap:wrap}
+.admin-order-payment>span{justify-content:flex-start;color:#6850a6;font-size:10px}
+.admin-order-payment label{justify-content:flex-start;color:#5d5666;font-size:10px;font-weight:600}
+.admin-order-payment select{
+  min-height:32px;
+  padding:5px 8px;
+  border:1px solid #e6e1eb;
+  border-radius:4px;
+  background:#fff;
+  color:#292333;
+  font:inherit;
+}
+.admin-order-delivery{
+  margin-top:10px;
+  padding-top:10px;
+  border-top:1px solid #efedf1;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  color:#6850a6;
+  font-size:10px;
+}
+.admin-order-delivery>span{display:flex;align-items:flex-start;gap:6px;color:#5d5666;line-height:1.5}
+.admin-order-delivery>span svg{flex:none;color:#6850a6}
+.admin-order-delivery a{flex:none;color:#6850a6;font-weight:700}
 .admin-product-row{
   min-height:67px;
   padding:8px 11px;
@@ -258,5 +306,9 @@
   .admin-product-row{gap:7px;padding:8px}
   .admin-product-row>img{width:42px;height:42px}
   .admin-icon-action{width:31px;height:31px;flex:none}
+  .admin-order-row{padding:11px}
+  .admin-order-heading{align-items:flex-start}
+  .admin-order-heading small{line-height:1.5}
+  .admin-order-delivery{align-items:flex-start;flex-direction:column}
   .admin-setup-card{padding:21px}
 }

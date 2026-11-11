@@ -216,6 +216,44 @@ app.post('/api/admin/setup', async (request, response) => {
 })
 
 app.get('/api/admin/products', requireAdmin, (request, response) => response.json({ products: catalogProducts }))
+app.get('/api/admin/orders', requireAdmin, async (request, response) => {
+  const store = await readStore()
+  const orders = [...(store.orders || [])]
+    .sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt))
+    .map((order) => ({ ...order, paymentStatus: order.paymentStatus || 'pending' }))
+  response.json({ orders })
+})
+
+app.patch('/api/admin/orders/:number/payment-status', requireAdmin, async (request, response) => {
+  const paymentStatus = request.body?.paymentStatus
+  if (!['pending', 'paid', 'failed'].includes(paymentStatus)) {
+    return response.status(400).json({ error: 'Choose a valid payment status.' })
+  }
+  const order = await updateStore((store) => {
+    const existing = (store.orders || []).find((entry) => entry.number === request.params.number)
+    if (!existing) return null
+    existing.paymentStatus = paymentStatus
+    return existing
+  })
+  if (!order) return response.status(404).json({ error: 'That order could not be found.' })
+  response.json({ order })
+})
+
+app.patch('/api/admin/orders/:number/status', requireAdmin, async (request, response) => {
+  const status = request.body?.status
+  if (!['pending', 'confirmed', 'packed', 'shipped', 'delivered', 'cancelled'].includes(status)) {
+    return response.status(400).json({ error: 'Choose a valid order status.' })
+  }
+  const order = await updateStore((store) => {
+    const existing = (store.orders || []).find((entry) => entry.number === request.params.number)
+    if (!existing) return null
+    existing.status = status
+    return existing
+  })
+  if (!order) return response.status(404).json({ error: 'That order could not be found.' })
+  response.json({ order })
+})
+
 app.post('/api/admin/products', requireAdmin, async (request, response) => {
   let product
   try {
@@ -458,7 +496,8 @@ app.post('/api/orders', async (request, response) => {
     bundleProductIds,
     bundleDiscount,
     total: subtotal + delivery - bundleDiscount,
-    status: 'confirmed',
+    status: 'pending',
+    paymentStatus: 'pending',
     estimatedDelivery,
     createdAt: createdAt.toISOString(),
   }
