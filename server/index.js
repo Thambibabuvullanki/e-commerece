@@ -1,9 +1,11 @@
+import 'dotenv/config'
 import { randomBytes, randomUUID, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import express from 'express'
+import { MongoClient } from 'mongodb'
 import { categories, products as seedProducts } from '../src/data/products.js'
 
 const scrypt = promisify(scryptCallback)
@@ -11,14 +13,23 @@ const app = express()
 const port = Number(process.env.PORT) || 4001
 const serverDirectory = dirname(fileURLToPath(import.meta.url))
 const storePath = join(serverDirectory, 'data', 'store.json')
+const mongoUri = process.env.MONGODB_URI?.trim()
 const sessions = new Map()
 let writeQueue = Promise.resolve()
+let mongoClient
+let storeCollection
 let catalogProducts = [...seedProducts]
 let storefrontBrand = { name: 'ZORVIQUE', tagline: 'Everything You Love, All in One Place.', logoUrl: '' }
 
 const emptyStore = () => ({ users: [], carts: {}, wishlists: {}, orders: [], restockAlerts: [], products: [...seedProducts], brand: storefrontBrand })
 
 async function readStore() {
+  if (storeCollection) {
+    const document = await storeCollection.findOne({ _id: 'main' })
+    if (!document) return emptyStore()
+    const { _id, ...store } = document
+    return store
+  }
   try {
     return JSON.parse(await readFile(storePath, 'utf8'))
   } catch (error) {
@@ -31,9 +42,13 @@ function updateStore(update) {
   const result = writeQueue.then(async () => {
     const store = await readStore()
     const value = update(store)
-    const temporaryPath = `${storePath}.${process.pid}.tmp`
-    await writeFile(temporaryPath, JSON.stringify(store, null, 2))
-    await rename(temporaryPath, storePath)
+    if (storeCollection) {
+      await storeCollection.replaceOne({ _id: 'main' }, { ...store, _id: 'main' }, { upsert: true })
+    } else {
+      const temporaryPath = `${storePath}.${process.pid}.tmp`
+      await writeFile(temporaryPath, JSON.stringify(store, null, 2))
+      await rename(temporaryPath, storePath)
+    }
     return value
   })
   writeQueue = result.then(() => undefined, () => undefined)
@@ -141,10 +156,12 @@ function validateProduct(input, id) {
 app.use(express.json({ limit: '100kb' }))
 app.use(async (request, response, next) => {
   try {
+    const store = await readStore()
+    catalogProducts = Array.isArray(store.products) ? store.products : [...seedProducts]
+    storefrontBrand = { ...storefrontBrand, ...(store.brand || {}) }
     const sessionId = parseCookies(request.headers.cookie).shopease_session
     const session = sessions.get(sessionId)
     if (session && session.expiresAt > Date.now()) {
-      const store = await readStore()
       const user = store.users.find((entry) => entry.id === session.userId)
       if (user) request.user = publicUser(user)
       else sessions.delete(sessionId)
@@ -157,7 +174,10 @@ app.use(async (request, response, next) => {
   }
 })
 
-app.get('/api/health', (request, response) => response.json({ status: 'ok' }))
+app.get('/api/health', (request, response) => response.json({
+  status: 'ok',
+  storage: storeCollection ? 'mongodb' : 'json',
+}))
 app.get('/api/products', (request, response) => response.json({ products: catalogProducts }))
 app.get('/api/categories', (request, response) => {
   const knownCategories = new Set(categories.map((category) => category.name))
@@ -515,11 +535,38 @@ app.use((error, request, response, next) => {
 })
 
 await mkdir(dirname(storePath), { recursive: true })
-try {
-  await readFile(storePath)
-} catch (error) {
-  if (error.code !== 'ENOENT') throw error
-  await writeFile(storePath, JSON.stringify(emptyStore(), null, 2))
+if (mongoUri) {
+  try {
+    mongoClient = new MongoClient(mongoUri)
+    await mongoClient.connect()
+    storeCollection = mongoClient
+      .db(process.env.MONGODB_DB?.trim() || 'zorvique')
+      .collection('store')
+    let initialStore
+    try {
+      initialStore = JSON.parse(await readFile(storePath, 'utf8'))
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error
+      initialStore = emptyStore()
+    }
+    await storeCollection.updateOne(
+      { _id: 'main' },
+      { $setOnInsert: initialStore },
+      { upsert: true },
+    )
+    console.log('Connected to MongoDB.')
+  } catch (error) {
+    console.error('Unable to connect to MongoDB or initialize the store. Check MONGODB_URI and MongoDB availability.', error)
+    process.exit(1)
+  }
+} else {
+  try {
+    await readFile(storePath)
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error
+    await writeFile(storePath, JSON.stringify(emptyStore(), null, 2))
+  }
+  console.log('MONGODB_URI is not set; using local JSON storage.')
 }
 
 const savedStore = await readStore()
