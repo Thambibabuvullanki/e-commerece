@@ -56,8 +56,7 @@ export default function Admin() {
   useEffect(() => { setItems(products) }, [products])
   useEffect(() => { setBrandForm(brand) }, [brand])
 
-  if (!user) return <Navigate to="/login" replace state={{ from: '/admin' }} />
-  if (user.role !== 'admin') return <Navigate to="/account" replace />
+  if (!user || user.role !== 'admin') return <Navigate to="/admin/login" replace state={{ from: '/admin' }} />
 
   const clearNotice = () => { setError(''); setMessage('') }
   const refreshItems = async () => {

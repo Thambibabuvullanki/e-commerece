@@ -8,7 +8,7 @@ import { categories, products as seedProducts } from '../src/data/products.js'
 
 const scrypt = promisify(scryptCallback)
 const app = express()
-const port = Number(process.env.PORT) || 4000
+const port = Number(process.env.PORT) || 4001
 const serverDirectory = dirname(fileURLToPath(import.meta.url))
 const storePath = join(serverDirectory, 'data', 'store.json')
 const sessions = new Map()
@@ -328,7 +328,7 @@ app.post('/api/auth/register', async (request, response) => {
   }
 })
 
-app.post('/api/auth/login', async (request, response) => {
+async function login(request, response, adminOnly = false) {
   const email = String(request.body?.email || '').trim().toLowerCase()
   const password = String(request.body?.password || '')
   const store = await readStore()
@@ -340,12 +340,18 @@ app.post('/api/auth/login', async (request, response) => {
   if (passwordHash.length !== expectedHash.length || !timingSafeEqual(passwordHash, expectedHash)) {
     return response.status(401).json({ error: 'Email or password is incorrect.' })
   }
+  if (adminOnly && user.role !== 'admin') {
+    return response.status(403).json({ error: 'This account does not have administrator access. Use the first-time admin setup if no administrator has been created yet.' })
+  }
 
   const sessionId = randomBytes(32).toString('base64url')
   sessions.set(sessionId, { userId: user.id, expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000 })
   setSessionCookie(response, sessionId)
   response.json({ user: publicUser(user) })
-})
+}
+
+app.post('/api/auth/login', (request, response) => login(request, response))
+app.post('/api/admin/login', (request, response) => login(request, response, true))
 
 app.post('/api/auth/logout', (request, response) => {
   const sessionId = parseCookies(request.headers.cookie).shopease_session
